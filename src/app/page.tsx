@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Box, Clock3, PackageCheck, Upload } from "lucide-react";
+import { ContactForm } from "@/components/contact-form";
 import { ProductGrid } from "@/components/catalogue/product-card";
 import { HeroPrinterScene } from "@/components/three/hero-printer-scene";
 import { Button } from "@/components/ui/button";
@@ -126,15 +127,7 @@ export default function Home() {
               strength, and finish before printing.
             </p>
           </div>
-          <form className="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-5">
-            <input className="h-11 rounded-md border border-zinc-300 px-3" placeholder="Name" />
-            <input className="h-11 rounded-md border border-zinc-300 px-3" placeholder="Email" />
-            <textarea
-              className="min-h-32 rounded-md border border-zinc-300 px-3 py-2"
-              placeholder="Tell us what you want to print"
-            />
-            <Button type="button" variant="dark">Send enquiry</Button>
-          </form>
+          <ContactForm />
         </div>
       </section>
     </div>

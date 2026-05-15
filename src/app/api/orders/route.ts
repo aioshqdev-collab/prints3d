@@ -36,6 +36,8 @@ function isMissingTableError(message?: string) {
 }
 
 export async function POST(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
   const body = await request.json();
   const parsed = orderSchema.safeParse(body);
 
@@ -58,14 +60,28 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!accessToken) {
+    return NextResponse.json({ error: "Please log in before payment." }, { status: 401 });
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(accessToken);
+
+  if (userError || !user) {
+    return NextResponse.json({ error: "Your login session expired. Please sign in again." }, { status: 401 });
+  }
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + shippingQuote.charge;
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
+      customer_id: user.id,
       customer_name: customer.name,
-      customer_email: customer.email,
+      customer_email: user.email ?? customer.email,
       customer_phone: customer.phone,
       shipping_address: customer.address,
       shipping_pincode: customer.pincode,
@@ -134,5 +150,6 @@ export async function POST(request: Request) {
     orderId: order.id,
     total,
     emailSent: email.sent,
+    emailReason: email.sent ? undefined : email.reason,
   });
 }

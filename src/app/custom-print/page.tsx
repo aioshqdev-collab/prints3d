@@ -5,6 +5,7 @@ import { Calculator, FileUp, ShoppingCart } from "lucide-react";
 import { colors, filamentRates } from "@/data/products";
 import { calculateQuote } from "@/lib/pricing";
 import { useCart } from "@/components/providers/cart-provider";
+import { PrintingLoaderOverlay } from "@/components/printing-loader";
 import { StlPreview } from "@/components/three/stl-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ export default function CustomPrintPage() {
   const [quantity, setQuantity] = useState(1);
   const [shipping, setShipping] = useState<"pickup" | "standard" | "express">("standard");
   const [uploadStatus, setUploadStatus] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
   const { addItem } = useCart();
 
   const fileSizeMb = file ? file.size / (1024 * 1024) : 0;
@@ -30,47 +32,53 @@ export default function CustomPrintPage() {
 
   async function addCustomPrint() {
     setUploadStatus("");
+    setAddingToCart(true);
     let stlFilePath = "";
 
-    if (file) {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch("/api/stl-upload", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await response.json();
+    try {
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/stl-upload", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json();
 
-      if (response.ok) {
-        stlFilePath = result.path;
-        setUploadStatus("STL uploaded to Supabase storage.");
-      } else {
-        setUploadStatus(`${result.error}. Added to cart with local filename only.`);
+        if (response.ok) {
+          stlFilePath = result.path;
+          setUploadStatus("STL uploaded to Supabase storage.");
+        } else {
+          setUploadStatus(`${result.error}. Added to cart with local filename only.`);
+        }
       }
-    }
 
-    const id = `custom-${Date.now()}`;
-    addItem({
-      id,
-      name: file?.name ? `Custom print: ${file.name}` : "Custom STL print",
-      price: quote.total,
-      quantity: 1,
-      type: "custom",
-      meta: {
-        filament,
-        color,
-        infill,
-        quality,
-        requestedQuantity: quantity,
-        shipping,
-        fileName: file?.name ?? "Upload pending",
-        stlFilePath: stlFilePath || "Not uploaded yet",
-      },
-    });
+      const id = `custom-${Date.now()}`;
+      addItem({
+        id,
+        name: file?.name ? `Custom print: ${file.name}` : "Custom STL print",
+        price: quote.total,
+        quantity: 1,
+        type: "custom",
+        meta: {
+          filament,
+          color,
+          infill,
+          quality,
+          requestedQuantity: quantity,
+          shipping,
+          fileName: file?.name ?? "Upload pending",
+          stlFilePath: stlFilePath || "Not uploaded yet",
+        },
+      });
+    } finally {
+      setAddingToCart(false);
+    }
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      {addingToCart ? <PrintingLoaderOverlay label="Uploading STL and preparing quote..." /> : null}
       <div className="mb-8 max-w-3xl">
         <p className="text-sm font-semibold uppercase tracking-normal text-emerald-700">
           Custom print studio
@@ -210,9 +218,9 @@ export default function CustomPrintPage() {
               <span>Total</span>
               <span>₹{quote.total}</span>
             </div>
-            <Button className="mt-5 w-full" onClick={addCustomPrint}>
+            <Button className="mt-5 w-full" onClick={addCustomPrint} disabled={addingToCart}>
               <ShoppingCart className="h-4 w-4" />
-              Add custom print
+              {addingToCart ? "Loading..." : "Add custom print"}
             </Button>
             {uploadStatus ? <p className="mt-3 text-sm text-zinc-600">{uploadStatus}</p> : null}
           </div>

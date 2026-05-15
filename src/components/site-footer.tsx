@@ -30,9 +30,6 @@ export function SiteFooter() {
           <Link href="/catalogue" className="hover:text-white">
             Shop parts
           </Link>
-          <Link href="/admin" className="hover:text-white">
-            Admin
-          </Link>
         </div>
       </div>
     </footer>

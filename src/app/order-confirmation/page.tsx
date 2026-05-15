@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default async function OrderConfirmationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ orderId?: string; email?: string }>;
+  searchParams: Promise<{ orderId?: string; email?: string; emailReason?: string }>;
 }) {
   const params = await searchParams;
 
@@ -28,7 +28,9 @@ export default async function OrderConfirmationPage({
             <Mail className="h-4 w-4 text-emerald-600" />
             {params.email === "sent"
               ? "A confirmation email has been sent to the customer."
-              : "Order saved. Configure RESEND_API_KEY to send confirmation email automatically."}
+              : params.emailReason
+                ? `Order saved, but email was not sent: ${params.emailReason}`
+                : "Order saved, but the confirmation email was not sent."}
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Button asChild variant="dark">

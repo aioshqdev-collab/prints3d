@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Cuboid, LayoutDashboard, ShoppingCart, UserRound } from "lucide-react";
+import { Cuboid, ShoppingCart, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/providers/cart-provider";
 
 const nav = [
   { href: "/custom-print", label: "Custom print" },
   { href: "/catalogue", label: "Catalogue" },
+  { href: "/orders", label: "Orders" },
   { href: "/#contact", label: "Contact" },
 ];
 
@@ -31,11 +32,6 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="icon" title="Admin dashboard">
-            <Link href="/admin">
-              <LayoutDashboard className="h-5 w-5" />
-            </Link>
-          </Button>
           <Button asChild variant="ghost" size="icon" title="Sign in">
             <Link href="/auth">
               <UserRound className="h-5 w-5" />
