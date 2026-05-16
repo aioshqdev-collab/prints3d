@@ -3,9 +3,9 @@ import { z } from "zod";
 import { Resend } from "resend";
 
 const contactSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  message: z.string().min(10),
+  name: z.string().trim().min(2, "Name must be at least 2 characters."),
+  email: z.string().trim().email("Enter a valid email address."),
+  message: z.string().trim().min(3, "Message must be at least 3 characters."),
 });
 
 export async function POST(request: Request) {
@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   const parsed = contactSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Please enter your name, email, and message." }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues.map((issue) => issue.message).join(" ") },
+      { status: 400 },
+    );
   }
 
   const apiKey = process.env.RESEND_API_KEY?.trim();

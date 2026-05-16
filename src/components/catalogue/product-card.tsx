@@ -41,11 +41,24 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
           <span className="rounded-md bg-zinc-100 px-2 py-1">{product.material}</span>
           <span className="rounded-md bg-zinc-100 px-2 py-1">{product.leadTime}</span>
+          {product.availability === "preprinted" ? (
+            <span className="rounded-md bg-emerald-50 px-2 py-1 font-medium text-emerald-700">
+              {product.stock} left
+            </span>
+          ) : (
+            <span className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-700">
+              Printed on order
+            </span>
+          )}
           <span className={`h-5 w-5 rounded-full ${swatches[product.color] ?? "bg-zinc-400"}`} />
         </div>
-        <Button className="mt-5 w-full" onClick={() => addItem(productToCartItem(product))}>
+        <Button
+          className="mt-5 w-full"
+          onClick={() => addItem(productToCartItem(product))}
+          disabled={product.availability === "preprinted" && product.stock === 0}
+        >
           <ShoppingCart className="h-4 w-4" />
-          Add to cart
+          {product.availability === "preprinted" && product.stock === 0 ? "Out of stock" : "Add to cart"}
         </Button>
       </CardContent>
     </Card>
@@ -57,6 +70,16 @@ export function ProductGrid({ limit }: { limit?: number }) {
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {visibleProducts.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  );
+}
+
+export function ProductList({ items }: { items: Product[] }) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
     </div>

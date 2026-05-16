@@ -1,18 +1,32 @@
-import { ProductGrid } from "@/components/catalogue/product-card";
+import { ProductList } from "@/components/catalogue/product-card";
+import { preprintedProducts, printOnOrderProducts } from "@/data/products";
 
 export default function CataloguePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-8 max-w-3xl">
+      <div className="mb-10 max-w-3xl">
         <p className="text-sm font-semibold uppercase tracking-normal text-emerald-700">
-          Ready-made catalogue
+          Catalogue
         </p>
-        <h1 className="mt-3 text-4xl font-semibold text-zinc-950">Preprinted 3D parts</h1>
+        <h1 className="mt-3 text-4xl font-semibold text-zinc-950">3D printed parts</h1>
         <p className="mt-4 text-zinc-600">
-          Useful, tested parts for makers, homes, workspaces, creator gear, and prototyping.
+          Shop ready stock, or place an order for parts printed after checkout.
         </p>
       </div>
-      <ProductGrid />
+      <section>
+        <div className="mb-5">
+          <h2 className="text-2xl font-semibold text-zinc-950">Pre printed</h2>
+          <p className="mt-2 text-sm text-zinc-600">Ready stock with item counters.</p>
+        </div>
+        <ProductList items={preprintedProducts} />
+      </section>
+      <section className="mt-12">
+        <div className="mb-5">
+          <h2 className="text-2xl font-semibold text-zinc-950">Print on order</h2>
+          <p className="mt-2 text-sm text-zinc-600">Made after checkout with the listed lead time.</p>
+        </div>
+        <ProductList items={printOnOrderProducts} />
+      </section>
     </div>
   );
 }

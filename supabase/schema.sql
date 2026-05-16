@@ -45,6 +45,13 @@ create table if not exists public.order_items (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.product_inventory (
+  product_id text primary key,
+  stock integer not null default 0,
+  is_preprinted boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
 insert into storage.buckets (id, name, public)
 values ('stl-files', 'stl-files', false)
 on conflict (id) do nothing;
@@ -52,6 +59,23 @@ on conflict (id) do nothing;
 alter table public.profiles enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.product_inventory enable row level security;
+
+drop policy if exists "Customers can insert own profile" on public.profiles;
+create policy "Customers can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+drop policy if exists "Customers can view own profile" on public.profiles;
+create policy "Customers can view own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+drop policy if exists "Customers can update own profile" on public.profiles;
+create policy "Customers can update own profile"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 drop policy if exists "Customers can view their own orders" on public.orders;
 create policy "Customers can view their own orders"

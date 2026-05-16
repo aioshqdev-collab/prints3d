@@ -20,6 +20,7 @@ export function productToCartItem(product: Product): CartItem {
     meta: {
       material: product.material,
       color: product.color,
+      availability: product.availability,
     },
   };
 }

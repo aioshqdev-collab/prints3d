@@ -20,7 +20,7 @@ A Next.js storefront for custom 3D printed parts and ready-made catalogue produc
    - `RAZORPAY_KEY_ID`
    - `RAZORPAY_KEY_SECRET`
 4. Run the SQL in `supabase/schema.sql` inside Supabase SQL editor.
-5. Add `ADMIN_ACCESS_TOKEN` to `.env.local`. Visit `/admin` manually and enter that token to open the dashboard for that page view only.
+5. Add `ADMIN_ACCESS_TOKEN` to `.env.local`. Visit `/admin` manually for the dashboard or `/backend` manually for backend management, then enter that token for that page view only.
 6. Add `RESEND_API_KEY`, `ORDER_FROM_EMAIL`, and optionally `CONTACT_TO_EMAIL` if you want automatic order confirmation and contact emails. Replace `re_xxxxxxxxx` with your real Resend API key.
 7. Add comma-separated `REMOTE_PINCODES` or `REMOTE_PINCODE_PREFIXES` to block remote delivery areas.
 8. Start the app:

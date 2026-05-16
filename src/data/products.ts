@@ -7,6 +7,8 @@ export type Product = {
   color: string;
   leadTime: string;
   description: string;
+  availability: "preprinted" | "print-on-order";
+  stock: number;
 };
 
 export const products: Product[] = [
@@ -19,6 +21,8 @@ export const products: Product[] = [
     color: "Graphite",
     leadTime: "Ready to ship",
     description: "Interlocking trays for tools, stationery, and small electronics.",
+    availability: "preprinted",
+    stock: 7,
   },
   {
     id: "camera-mount-arm",
@@ -29,6 +33,8 @@ export const products: Product[] = [
     color: "Matte Black",
     leadTime: "2 days",
     description: "A rugged mount with heat-safe PETG construction and brass inserts.",
+    availability: "print-on-order",
+    stock: 0,
   },
   {
     id: "plant-wall-clips",
@@ -39,6 +45,8 @@ export const products: Product[] = [
     color: "Moss",
     leadTime: "Ready to ship",
     description: "Low-profile clips for vine support, cable routing, or light decor.",
+    availability: "preprinted",
+    stock: 14,
   },
   {
     id: "prototype-enclosure",
@@ -49,6 +57,8 @@ export const products: Product[] = [
     color: "White",
     leadTime: "3 days",
     description: "Ventilated enclosure with standoff posts for custom PCB projects.",
+    availability: "print-on-order",
+    stock: 0,
   },
   {
     id: "rc-spacer-kit",
@@ -59,6 +69,8 @@ export const products: Product[] = [
     color: "Natural",
     leadTime: "2 days",
     description: "Assorted lightweight spacers for drones, RC cars, and repairs.",
+    availability: "print-on-order",
+    stock: 0,
   },
   {
     id: "miniature-display-riser",
@@ -69,8 +81,13 @@ export const products: Product[] = [
     color: "Copper",
     leadTime: "Ready to ship",
     description: "Tiered display base for collectibles, models, and product samples.",
+    availability: "preprinted",
+    stock: 4,
   },
 ];
+
+export const preprintedProducts = products.filter((product) => product.availability === "preprinted");
+export const printOnOrderProducts = products.filter((product) => product.availability === "print-on-order");
 
 export const filamentRates: Record<string, number> = {
   PLA: 2.4,
