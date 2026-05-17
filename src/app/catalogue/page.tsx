@@ -1,7 +1,13 @@
 import { ProductList } from "@/components/catalogue/product-card";
-import { preprintedProducts, printOnOrderProducts } from "@/data/products";
+import { getCatalogueProducts } from "@/lib/catalogue-data";
 
-export default function CataloguePage() {
+export const dynamic = "force-dynamic";
+
+export default async function CataloguePage() {
+  const liveProducts = await getCatalogueProducts();
+  const preprintedProducts = liveProducts.filter((product) => product.availability === "preprinted");
+  const printOnOrderProducts = liveProducts.filter((product) => product.availability === "print-on-order");
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-10 max-w-3xl">

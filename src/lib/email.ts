@@ -15,6 +15,13 @@ export async function sendOrderConfirmationEmail(input: ConfirmationEmailInput) 
   const from = (process.env.ORDER_FROM_EMAIL ?? "Prints3D <onboarding@resend.dev>").trim();
 
   if (!apiKey) return { sent: false, reason: "RESEND_API_KEY is not configured" };
+  if (from.includes("@gmail.com")) {
+    return {
+      sent: false,
+      reason:
+        "ORDER_FROM_EMAIL is using gmail.com. Resend requires the From address to use your verified sending domain. Use your verified domain email as From and keep Gmail as reply-to/contact.",
+    };
+  }
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
@@ -36,5 +43,35 @@ export async function sendOrderConfirmationEmail(input: ConfirmationEmailInput) 
 
   if (error) return { sent: false, reason: error.message };
 
+  return { sent: true };
+}
+
+export async function sendPrintStartedEmail(input: { to: string; itemName: string; orderId: string }) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = (process.env.ORDER_FROM_EMAIL ?? "Prints3D <onboarding@resend.dev>").trim();
+
+  if (!apiKey) return { sent: false, reason: "RESEND_API_KEY is not configured" };
+  if (from.includes("@gmail.com")) {
+    return {
+      sent: false,
+      reason: "ORDER_FROM_EMAIL must use your verified Resend domain, not gmail.com.",
+    };
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from,
+    to: input.to,
+    subject: `Printing started: ${input.itemName}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#18181b">
+        <h1>Your print has started</h1>
+        <p>Your Prints3D item <strong>${input.itemName}</strong> from order ${input.orderId} is now printing.</p>
+        <p>We will update you again when it is packed for shipping.</p>
+      </div>
+    `,
+  });
+
+  if (error) return { sent: false, reason: error.message };
   return { sent: true };
 }

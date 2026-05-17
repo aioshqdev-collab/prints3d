@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Archive } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -13,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export type AdminOrder = {
   id: string;
@@ -44,13 +46,19 @@ export function AdminDashboard({
   stats,
   revenue,
   materials,
+  onArchive,
 }: {
   orders: AdminOrder[];
   stats: AdminStats;
   revenue: ChartPoint[];
   materials: ChartPoint[];
+  onArchive?: (orderId: string) => void;
 }) {
   const [chartsReady, setChartsReady] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const pageCount = Math.max(1, Math.ceil(orders.length / pageSize));
+  const visibleOrders = orders.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setChartsReady(true));
@@ -144,7 +152,7 @@ export function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
+                  {visibleOrders.map((order) => (
                     <tr key={order.id} className="border-b border-zinc-100">
                       <td className="py-4 font-medium">{order.id.slice(0, 8)}</td>
                       <td className="py-4">{order.customer}</td>
@@ -160,11 +168,45 @@ export function AdminDashboard({
                       </td>
                       <td className="py-4">{order.distanceKm ? `${order.distanceKm} km` : "-"}</td>
                       <td className="py-4">{order.stl}</td>
-                      <td className="py-4 text-right font-semibold">₹{order.total}</td>
+                      <td className="py-4 text-right">
+                        <span className="block font-semibold">₹{order.total}</span>
+                        {onArchive ? (
+                          <Button
+                            className="mt-2"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onArchive(order.id)}
+                          >
+                            <Archive className="h-4 w-4" />
+                            Archive
+                          </Button>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <div className="mt-4 flex flex-col justify-between gap-3 text-sm text-zinc-600 sm:flex-row sm:items-center">
+                <span>
+                  Orders {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, orders.length)} of {orders.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>
+                    Previous
+                  </Button>
+                  <span className="rounded-md bg-zinc-100 px-3 py-2">
+                    Page {page} / {pageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === pageCount}
+                    onClick={() => setPage((value) => value + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

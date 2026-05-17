@@ -65,8 +65,9 @@ export function ProductCard({ product }: { product: Product }) {
   );
 }
 
-export function ProductGrid({ limit }: { limit?: number }) {
-  const visibleProducts = limit ? products.slice(0, limit) : products;
+export function ProductGrid({ limit, items }: { limit?: number; items?: Product[] }) {
+  const source = items ?? products;
+  const visibleProducts = limit ? source.slice(0, limit) : source;
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {visibleProducts.map((product) => (

@@ -21,6 +21,7 @@ type DashboardResponse = {
 export default function AdminPage() {
   const [token, setToken] = useState("");
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [activeToken, setActiveToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -39,9 +40,39 @@ export default function AdminPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to open admin dashboard");
       setDashboard(result as DashboardResponse);
+      setActiveToken(token);
       setToken("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to open admin dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function archiveOrder(orderId: string) {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin-dashboard", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: activeToken, action: "archive-order", orderId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to archive order");
+
+      const reload = await fetch("/api/admin-dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: activeToken }),
+      });
+      const data = await reload.json();
+      if (!reload.ok) throw new Error(data.error ?? "Unable to refresh dashboard");
+      setDashboard(data as DashboardResponse);
+      setMessage("Order archived.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to archive order");
     } finally {
       setLoading(false);
     }
@@ -110,6 +141,7 @@ export default function AdminPage() {
         stats={dashboard.stats}
         revenue={dashboard.revenue}
         materials={dashboard.materials}
+        onArchive={archiveOrder}
       />
     </div>
   );

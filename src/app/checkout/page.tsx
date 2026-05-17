@@ -150,7 +150,12 @@ export default function CheckoutPage() {
     const result = await response.json();
     setSavingOrder(false);
     if (!response.ok) throw new Error(result.error ?? "Unable to save order");
-    return result as { orderId: string; emailSent: boolean; emailReason?: string };
+    return result as {
+      orderId: string;
+      emailSent: boolean;
+      emailReason?: string;
+      queue?: { message?: string; queuedCount?: number; startedCount?: number };
+    };
   }
 
   async function payNow() {
@@ -199,6 +204,7 @@ export default function CheckoutPage() {
               email: saved.emailSent ? "sent" : "pending",
             });
             if (saved.emailReason) params.set("emailReason", saved.emailReason);
+            if (saved.queue?.message) params.set("queue", saved.queue.message);
             router.push(`/order-confirmation?${params.toString()}`);
           } catch (error) {
             setSavingOrder(false);

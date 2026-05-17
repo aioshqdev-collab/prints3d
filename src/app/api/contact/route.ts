@@ -30,6 +30,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (from.includes("@gmail.com")) {
+    return NextResponse.json(
+      {
+        error:
+          "ORDER_FROM_EMAIL is using gmail.com. Resend requires From to use your verified sending domain. Set ORDER_FROM_EMAIL to an address on your verified Resend domain.",
+      },
+      { status: 500 },
+    );
+  }
+
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
     from,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Cuboid, ShoppingCart, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/providers/cart-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const nav = [
   { href: "/custom-print", label: "Custom print" },
@@ -32,6 +33,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button asChild variant="ghost" size="icon" title="Sign in">
             <Link href="/auth">
               <UserRound className="h-5 w-5" />

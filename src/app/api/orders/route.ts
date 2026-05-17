@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getShippingQuote } from "@/lib/shipping";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { decrementPreprintedStock, enqueuePrintableItems } from "@/lib/print-queue";
 
 const cartItemSchema = z.object({
   id: z.string(),
@@ -110,8 +111,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: itemsError } = await supabase.from("order_items").insert(
-    items.map((item) => ({
+  const { data: savedItems, error: itemsError } = await supabase
+    .from("order_items")
+    .insert(
+      items.map((item) => ({
       order_id: order.id,
       product_id: item.id,
       item_type: item.type,
@@ -123,8 +126,9 @@ export async function POST(request: Request) {
       infill: item.meta?.infill ? Number(item.meta.infill) : undefined,
       quality: item.meta?.quality ? String(item.meta.quality) : undefined,
       stl_file_path: item.meta?.stlFilePath ? String(item.meta.stlFilePath) : undefined,
-    })),
-  );
+      })),
+    )
+    .select("id, product_id, item_type, name");
 
   if (itemsError) {
     return NextResponse.json(
@@ -136,6 +140,27 @@ export async function POST(request: Request) {
       },
       { status: 500 },
     );
+  }
+
+  await decrementPreprintedStock(supabase, items);
+
+  let queueResult = {
+    printableCount: 0,
+    startedCount: 0,
+    queuedCount: 0,
+    message: "No print queue needed for ready-stock items.",
+  };
+
+  try {
+    queueResult = await enqueuePrintableItems(supabase, {
+      orderId: order.id,
+      customerId: user.id,
+      customerEmail: user.email ?? customer.email,
+      items,
+      itemIds: savedItems ?? [],
+    });
+  } catch (error) {
+    console.error("Print queue failed:", error);
   }
 
   const email = await sendOrderConfirmationEmail({
@@ -151,5 +176,6 @@ export async function POST(request: Request) {
     total,
     emailSent: email.sent,
     emailReason: email.sent ? undefined : email.reason,
+    queue: queueResult,
   });
 }

@@ -52,6 +52,37 @@ create table if not exists public.product_inventory (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.printer_state (
+  id integer primary key default 1 check (id = 1),
+  is_free boolean not null default true,
+  current_queue_id uuid,
+  note text,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.printer_state (id, is_free)
+values (1, true)
+on conflict (id) do nothing;
+
+create table if not exists public.print_queue (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  order_item_id uuid references public.order_items(id) on delete cascade,
+  customer_id uuid references auth.users(id),
+  customer_email text not null,
+  item_name text not null,
+  quantity integer not null default 1,
+  stl_file_path text,
+  status text not null default 'queued',
+  position integer not null default 0,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.orders add column if not exists archived_at timestamptz;
+alter table public.orders add column if not exists archived_by text;
+
 insert into storage.buckets (id, name, public)
 values ('stl-files', 'stl-files', false)
 on conflict (id) do nothing;
@@ -60,6 +91,8 @@ alter table public.profiles enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.product_inventory enable row level security;
+alter table public.printer_state enable row level security;
+alter table public.print_queue enable row level security;
 
 drop policy if exists "Customers can insert own profile" on public.profiles;
 create policy "Customers can insert own profile"

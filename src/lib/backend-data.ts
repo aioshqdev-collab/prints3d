@@ -13,6 +13,7 @@ export type InventoryRow = {
 };
 
 export type PrintJobRow = {
+  queueId: string | null;
   orderId: string;
   customer: string;
   phone: string | null;
@@ -31,6 +32,12 @@ export type PrintJobRow = {
   createdAt: string;
 };
 
+export type PrinterStateRow = {
+  isFree: boolean;
+  currentQueueId: string | null;
+  note: string | null;
+};
+
 export async function getBackendManagementData() {
   const supabase = createSupabaseAdminClient();
 
@@ -47,6 +54,7 @@ export async function getBackendManagementData() {
         localFallback: true,
       })),
       printJobs: [] as PrintJobRow[],
+      printerState: { isFree: true, currentQueueId: null, note: null } as PrinterStateRow,
     };
   }
 
@@ -73,10 +81,21 @@ export async function getBackendManagementData() {
   const { data: ordersData, error: ordersError } = await supabase
     .from("orders")
     .select(
-      "id, customer_name, customer_email, customer_phone, shipping_address, shipping_pincode, status, created_at, order_items(name, item_type, quantity, material, color, infill, quality, stl_file_path)",
+      "id, customer_name, customer_email, customer_phone, shipping_address, shipping_pincode, status, created_at, order_items(id, name, item_type, quantity, material, color, infill, quality, stl_file_path)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
+
+  const { data: printerData } = await supabase
+    .from("printer_state")
+    .select("is_free, current_queue_id, note")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const { data: queueData } = await supabase
+    .from("print_queue")
+    .select("id, order_item_id, status, position, started_at, completed_at")
+    .order("position", { ascending: true });
 
   const printJobs: PrintJobRow[] = [];
   for (const order of ordersData ?? []) {
@@ -87,13 +106,14 @@ export async function getBackendManagementData() {
           : null;
 
       printJobs.push({
+        queueId: queueData?.find((queue) => queue.order_item_id === item.id)?.id ?? null,
         orderId: order.id,
         customer: order.customer_name,
         phone: order.customer_phone,
         email: order.customer_email,
         address: order.shipping_address,
         pincode: order.shipping_pincode,
-        status: order.status,
+        status: queueData?.find((queue) => queue.order_item_id === item.id)?.status ?? order.status,
         itemName: item.name,
         material: item.material,
         color: item.color,
@@ -112,5 +132,10 @@ export async function getBackendManagementData() {
     dbError: inventoryError?.message ?? ordersError?.message,
     inventory,
     printJobs,
+    printerState: {
+      isFree: printerData?.is_free ?? true,
+      currentQueueId: printerData?.current_queue_id ?? null,
+      note: printerData?.note ?? null,
+    } as PrinterStateRow,
   };
 }

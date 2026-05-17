@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default async function OrderConfirmationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ orderId?: string; email?: string; emailReason?: string }>;
+  searchParams: Promise<{ orderId?: string; email?: string; emailReason?: string; queue?: string }>;
 }) {
   const params = await searchParams;
 
@@ -32,6 +32,11 @@ export default async function OrderConfirmationPage({
                 ? `Order saved, but email was not sent: ${params.emailReason}`
                 : "Order saved, but the confirmation email was not sent."}
           </p>
+          {params.queue ? (
+            <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              {params.queue}
+            </p>
+          ) : null}
           <div className="mt-6 flex justify-center gap-3">
             <Button asChild variant="dark">
               <Link href="/catalogue">Continue shopping</Link>

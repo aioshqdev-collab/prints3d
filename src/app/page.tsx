@@ -4,8 +4,13 @@ import { ContactForm } from "@/components/contact-form";
 import { ProductGrid } from "@/components/catalogue/product-card";
 import { HeroPrinterScene } from "@/components/three/hero-printer-scene";
 import { Button } from "@/components/ui/button";
+import { getCatalogueProducts } from "@/lib/catalogue-data";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const liveProducts = await getCatalogueProducts();
+
   return (
     <div>
       <section className="bg-white">
@@ -111,7 +116,7 @@ export default function Home() {
               <Link href="/catalogue">View all products</Link>
             </Button>
           </div>
-          <ProductGrid limit={3} />
+          <ProductGrid limit={3} items={liveProducts.filter((product) => product.availability === "preprinted")} />
         </div>
       </section>
 

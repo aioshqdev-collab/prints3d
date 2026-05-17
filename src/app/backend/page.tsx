@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LockKeyhole, Save } from "lucide-react";
+import { Download, LockKeyhole, Play, Save, SquareCheckBig } from "lucide-react";
 import { PrintingLoaderOverlay } from "@/components/printing-loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { InventoryRow, PrintJobRow } from "@/lib/backend-data";
+import type { InventoryRow, PrinterStateRow, PrintJobRow } from "@/lib/backend-data";
 
 type BackendData = {
   dbConnected: boolean;
   dbError?: string;
   inventory: InventoryRow[];
   printJobs: PrintJobRow[];
+  printerState: PrinterStateRow;
 };
 
 export default function BackendPage() {
@@ -57,6 +58,7 @@ export default function BackendPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token: activeToken,
+          action: "inventory",
           productId: row.productId,
           stock,
           isPreprinted,
@@ -68,6 +70,48 @@ export default function BackendPage() {
       setMessage("Inventory updated.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update inventory");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updatePrinterState(isFree: boolean) {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/backend-management", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: activeToken, action: "printer-state", isFree }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update printer state");
+      await loadBackend();
+      setMessage(isFree ? "Printer marked free." : "Printer marked busy.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update printer state");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateQueueStatus(queueId: string, status: "queued" | "printing" | "completed") {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/backend-management", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: activeToken, action: "queue-status", queueId, status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to update queue");
+      await loadBackend();
+      setMessage(`Queue item marked ${status}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update queue");
     } finally {
       setLoading(false);
     }
@@ -135,6 +179,30 @@ export default function BackendPage() {
 
       {message ? <p className="mb-4 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700">{message}</p> : null}
 
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Printer state</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-lg font-semibold text-zinc-950">
+              {data.printerState.isFree ? "Printer is free" : "Printer is busy"}
+            </p>
+            <p className="text-sm text-zinc-600">
+              Use this manual control until your printer arrives and can report status automatically.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant={data.printerState.isFree ? "dark" : "outline"} onClick={() => updatePrinterState(true)}>
+              Mark free
+            </Button>
+            <Button variant={!data.printerState.isFree ? "dark" : "outline"} onClick={() => updatePrinterState(false)}>
+              Mark busy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Catalogue inventory</CardTitle>
@@ -179,6 +247,7 @@ export default function BackendPage() {
                     <th className="py-3 font-medium">Print settings</th>
                     <th className="py-3 font-medium">Shipping</th>
                     <th className="py-3 font-medium">STL</th>
+                    <th className="py-3 text-right font-medium">Queue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -216,6 +285,22 @@ export default function BackendPage() {
                           </a>
                         ) : (
                           <span className="text-zinc-500">{job.stlFilePath ?? "No STL"}</span>
+                        )}
+                      </td>
+                      <td className="py-4 text-right">
+                        {job.queueId ? (
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => updateQueueStatus(job.queueId!, "printing")}>
+                              <Play className="h-4 w-4" />
+                              Start
+                            </Button>
+                            <Button size="sm" onClick={() => updateQueueStatus(job.queueId!, "completed")}>
+                              <SquareCheckBig className="h-4 w-4" />
+                              Done
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-zinc-500">No queue</span>
                         )}
                       </td>
                     </tr>

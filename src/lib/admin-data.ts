@@ -55,6 +55,7 @@ export async function getAdminDashboardData(): Promise<{
     .select(
       "id, customer_name, customer_email, shipping_address, shipping_pincode, shipping_district, shipping_distance_km, status, total, created_at, order_items(name, item_type, quantity, material, stl_file_path)",
     )
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -112,11 +113,12 @@ export async function getAdminDashboardData(): Promise<{
   return {
     orders,
     stats: {
-      openOrders: dbOrders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length,
+      openOrders: dbOrders.filter((order) => !["delivered", "cancelled", "archived"].includes(order.status)).length,
       revenue: dbOrders.reduce((sum, order) => sum + order.total, 0),
       customFiles: dbOrders.flatMap((order) => order.order_items).filter((item) => item.item_type === "custom")
         .length,
-      pendingShipment: dbOrders.filter((order) => ["paid", "printing", "packed"].includes(order.status)).length,
+      pendingShipment: dbOrders.filter((order) => ["paid", "printing", "packed", "shipped"].includes(order.status))
+        .length,
     },
     revenue: Array.from(revenueMap, ([label, value]) => ({ label, value })),
     materials: Array.from(materialMap, ([label, value]) => ({ label, value })).slice(0, 6),
