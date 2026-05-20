@@ -13,7 +13,7 @@ export function SiteFooter() {
         </div>
         <div className="space-y-3 text-sm text-zinc-300">
           <p className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-emerald-300" /> 7907581773
+            <Phone className="h-4 w-4 text-emerald-300" /> 9074381773
           </p>
           <p className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-emerald-300" /> aios.hq.dev@gmail.com
