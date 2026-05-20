@@ -42,7 +42,7 @@ export async function getAdminDashboardData(): Promise<{
   if (!supabase) {
     return {
       orders: [],
-      stats: { openOrders: 0, revenue: 0, customFiles: 0, pendingShipment: 0 },
+      stats: { totalOrders: 0, openOrders: 0, revenue: 0, customFiles: 0, pendingShipment: 0 },
       revenue: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => ({ label, value: 0 })),
       materials: ["PLA+", "PETG", "ABS", "Nylon"].map((label) => ({ label, value: 0 })),
       dbConnected: false,
@@ -66,12 +66,17 @@ export async function getAdminDashboardData(): Promise<{
     .order("created_at", { ascending: false })
     .limit(1000);
 
-  if (activeError || metricsError) {
-    const message = activeError?.message ?? metricsError?.message ?? "Admin dashboard query failed";
+  const { count: totalOrders, error: totalOrdersError } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true });
+
+  if (activeError || metricsError || totalOrdersError) {
+    const message =
+      activeError?.message ?? metricsError?.message ?? totalOrdersError?.message ?? "Admin dashboard query failed";
     console.error("Admin dashboard Supabase error:", message);
     return {
       orders: [],
-      stats: { openOrders: 0, revenue: 0, customFiles: 0, pendingShipment: 0 },
+      stats: { totalOrders: 0, openOrders: 0, revenue: 0, customFiles: 0, pendingShipment: 0 },
       revenue: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => ({ label, value: 0 })),
       materials: ["PLA+", "PETG", "ABS", "Nylon"].map((label) => ({ label, value: 0 })),
       dbConnected: false,
@@ -122,6 +127,7 @@ export async function getAdminDashboardData(): Promise<{
   return {
     orders,
     stats: {
+      totalOrders: totalOrders ?? metricOrders.length,
       openOrders: activeOrders.filter((order) => !["delivered", "cancelled", "archived"].includes(order.status)).length,
       revenue: metricOrders.reduce((sum, order) => sum + order.total, 0),
       customFiles: activeOrders.flatMap((order) => order.order_items).filter((item) => item.item_type === "custom")

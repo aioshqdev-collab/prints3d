@@ -30,6 +30,7 @@ export type AdminOrder = {
 };
 
 export type AdminStats = {
+  totalOrders: number;
   openOrders: number;
   revenue: number;
   customFiles: number;
@@ -67,8 +68,9 @@ export function AdminDashboard({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[
+          ["Total orders", stats.totalOrders],
           ["Open orders", stats.openOrders],
           ["Revenue", `₹${stats.revenue.toLocaleString("en-IN")}`],
           ["Custom STL files", stats.customFiles],

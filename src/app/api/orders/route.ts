@@ -5,6 +5,7 @@ import { getShippingQuote } from "@/lib/shipping";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { decrementPreprintedStock, enqueuePrintableItems } from "@/lib/print-queue";
 import { verifyRazorpayPaymentSignature } from "@/lib/razorpay";
+import { sendOrderMilestoneEmails } from "@/lib/order-milestones";
 
 const cartItemSchema = z.object({
   id: z.string(),
@@ -185,6 +186,14 @@ export async function POST(request: Request) {
     total,
     pincode: customer.pincode,
   });
+
+  try {
+    const { count, error: countError } = await supabase.from("orders").select("id", { count: "exact", head: true });
+    if (countError) throw countError;
+    await sendOrderMilestoneEmails(supabase, count ?? 0);
+  } catch (error) {
+    console.error("Order milestone check failed:", error);
+  }
 
   return NextResponse.json({
     orderId: order.id,

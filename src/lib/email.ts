@@ -134,3 +134,42 @@ export async function sendProductShippedEmail(input: { to: string; itemName: str
   if (error) return { sent: false, reason: error.message };
   return { sent: true };
 }
+
+export async function sendOwnerMilestoneEmail(input: {
+  totalOrders: number;
+  threshold: number;
+  title: string;
+  message: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = (process.env.ORDER_FROM_EMAIL ?? "Prints3D <onboarding@resend.dev>").trim();
+  const to = (process.env.OWNER_NOTIFICATION_EMAIL ?? process.env.CONTACT_TO_EMAIL ?? "").trim();
+
+  if (!apiKey) return { sent: false, reason: "RESEND_API_KEY is not configured" };
+  if (!to) return { sent: false, reason: "OWNER_NOTIFICATION_EMAIL or CONTACT_TO_EMAIL is not configured" };
+  if (from.includes("@gmail.com")) {
+    return {
+      sent: false,
+      reason: "ORDER_FROM_EMAIL must use your verified Resend domain, not gmail.com.",
+    };
+  }
+
+  const resend = new Resend(apiKey);
+  const { error } = await resend.emails.send({
+    from,
+    to,
+    subject: `Prints3D milestone: ${input.title}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.7;color:#18181b">
+        <p style="font-size:13px;text-transform:uppercase;letter-spacing:0.08em;color:#059669;font-weight:700">Prints3D milestone</p>
+        <h1 style="font-size:32px;margin:0 0 16px">BIG ANNOUNCEMENT: ${input.title}</h1>
+        <p style="font-size:18px">${input.message}</p>
+        <p><strong>Total orders:</strong> ${input.totalOrders}</p>
+        <p>This is one of those tiny dashboard numbers that means something real: people are trusting your website, your prints, and your work.</p>
+      </div>
+    `,
+  });
+
+  if (error) return { sent: false, reason: error.message };
+  return { sent: true };
+}
