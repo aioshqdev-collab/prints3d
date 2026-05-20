@@ -50,29 +50,38 @@ export async function getAdminDashboardData(): Promise<{
     };
   }
 
-  const { data, error } = await supabase
+  const orderSelect =
+    "id, customer_name, customer_email, shipping_address, shipping_pincode, shipping_district, shipping_distance_km, status, total, created_at, order_items(name, item_type, quantity, material, stl_file_path)";
+
+  const { data: activeData, error: activeError } = await supabase
     .from("orders")
-    .select(
-      "id, customer_name, customer_email, shipping_address, shipping_pincode, shipping_district, shipping_distance_km, status, total, created_at, order_items(name, item_type, quantity, material, stl_file_path)",
-    )
+    .select(orderSelect)
     .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
 
-  if (error) {
-    console.error("Admin dashboard Supabase error:", error.message);
+  const { data: metricsData, error: metricsError } = await supabase
+    .from("orders")
+    .select(orderSelect)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (activeError || metricsError) {
+    const message = activeError?.message ?? metricsError?.message ?? "Admin dashboard query failed";
+    console.error("Admin dashboard Supabase error:", message);
     return {
       orders: [],
       stats: { openOrders: 0, revenue: 0, customFiles: 0, pendingShipment: 0 },
       revenue: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => ({ label, value: 0 })),
       materials: ["PLA+", "PETG", "ABS", "Nylon"].map((label) => ({ label, value: 0 })),
       dbConnected: false,
-      dbError: error.message,
+      dbError: message,
     };
   }
 
-  const dbOrders = (data ?? []) as DbOrder[];
-  const orders: AdminOrder[] = dbOrders.map((order) => {
+  const activeOrders = (activeData ?? []) as DbOrder[];
+  const metricOrders = (metricsData ?? []) as DbOrder[];
+  const orders: AdminOrder[] = activeOrders.map((order) => {
     const firstItem = order.order_items[0];
     const stl = order.order_items.find((item) => item.stl_file_path)?.stl_file_path ?? "catalogue item";
     return {
@@ -99,13 +108,13 @@ export async function getAdminDashboardData(): Promise<{
     revenueMap.set(weekdayLabel(date), 0);
   }
 
-  dbOrders.forEach((order) => {
+  metricOrders.forEach((order) => {
     const label = weekdayLabel(new Date(order.created_at));
     if (revenueMap.has(label)) revenueMap.set(label, (revenueMap.get(label) ?? 0) + order.total);
   });
 
   const materialMap = new Map<string, number>();
-  dbOrders.flatMap((order) => order.order_items).forEach((item) => {
+  metricOrders.flatMap((order) => order.order_items).forEach((item) => {
     const label = item.material ?? "Other";
     materialMap.set(label, (materialMap.get(label) ?? 0) + item.quantity);
   });
@@ -113,11 +122,11 @@ export async function getAdminDashboardData(): Promise<{
   return {
     orders,
     stats: {
-      openOrders: dbOrders.filter((order) => !["delivered", "cancelled", "archived"].includes(order.status)).length,
-      revenue: dbOrders.reduce((sum, order) => sum + order.total, 0),
-      customFiles: dbOrders.flatMap((order) => order.order_items).filter((item) => item.item_type === "custom")
+      openOrders: activeOrders.filter((order) => !["delivered", "cancelled", "archived"].includes(order.status)).length,
+      revenue: metricOrders.reduce((sum, order) => sum + order.total, 0),
+      customFiles: activeOrders.flatMap((order) => order.order_items).filter((item) => item.item_type === "custom")
         .length,
-      pendingShipment: dbOrders.filter((order) => ["paid", "printing", "packed", "shipped"].includes(order.status))
+      pendingShipment: activeOrders.filter((order) => ["paid", "printing", "packed", "shipped"].includes(order.status))
         .length,
     },
     revenue: Array.from(revenueMap, ([label, value]) => ({ label, value })),

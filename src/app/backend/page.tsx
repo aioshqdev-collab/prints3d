@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LockKeyhole, Play, Save, SquareCheckBig } from "lucide-react";
+import { Download, LockKeyhole, Play, Save, SquareCheckBig, Truck } from "lucide-react";
 import { PrintingLoaderOverlay } from "@/components/printing-loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ export default function BackendPage() {
   const [data, setData] = useState<BackendData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [printJobsPage, setPrintJobsPage] = useState(1);
 
   async function loadBackend(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -39,6 +40,7 @@ export default function BackendPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to open backend manager");
       setData(result as BackendData);
+      setPrintJobsPage(1);
       setActiveToken(authToken);
       setToken("");
     } catch (error) {
@@ -109,9 +111,30 @@ export default function BackendPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to update queue");
       await loadBackend();
-      setMessage(`Queue item marked ${status}.`);
+      setMessage(status === "completed" ? "Print done email sent. Order archived." : `Queue item marked ${status}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update queue");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function shipOrderItem(orderId: string, orderItemId: string) {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/backend-management", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: activeToken, action: "ship-order-item", orderId, orderItemId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to ship order");
+      await loadBackend();
+      setMessage("Shipping email sent. Order archived.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to ship order");
     } finally {
       setLoading(false);
     }
@@ -153,6 +176,14 @@ export default function BackendPage() {
     );
   }
 
+  const pageSize = 10;
+  const printJobsPageCount = Math.max(1, Math.ceil(data.printJobs.length / pageSize));
+  const currentPrintJobsPage = Math.min(printJobsPage, printJobsPageCount);
+  const visiblePrintJobs = data.printJobs.slice(
+    (currentPrintJobsPage - 1) * pageSize,
+    currentPrintJobsPage * pageSize,
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       {loading ? <PrintingLoaderOverlay label="Updating backend..." /> : null}
@@ -172,7 +203,13 @@ export default function BackendPage() {
             </p>
           ) : null}
         </div>
-        <Button variant="outline" onClick={() => setData(null)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setData(null);
+            setPrintJobsPage(1);
+          }}
+        >
           Lock
         </Button>
       </div>
@@ -247,12 +284,12 @@ export default function BackendPage() {
                     <th className="py-3 font-medium">Print settings</th>
                     <th className="py-3 font-medium">Shipping</th>
                     <th className="py-3 font-medium">STL</th>
-                    <th className="py-3 text-right font-medium">Queue</th>
+                    <th className="py-3 text-right font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.printJobs.map((job) => (
-                    <tr key={`${job.orderId}-${job.itemName}-${job.createdAt}`} className="border-b border-zinc-100">
+                  {visiblePrintJobs.map((job) => (
+                    <tr key={job.orderItemId} className="border-b border-zinc-100">
                       <td className="py-4 font-medium">{job.orderId.slice(0, 8)}</td>
                       <td className="py-4">
                         {job.customer}
@@ -299,6 +336,11 @@ export default function BackendPage() {
                               Done
                             </Button>
                           </div>
+                        ) : job.readyToShip ? (
+                          <Button size="sm" onClick={() => shipOrderItem(job.orderId, job.orderItemId)}>
+                            <Truck className="h-4 w-4" />
+                            Ship
+                          </Button>
                         ) : (
                           <span className="text-zinc-500">No queue</span>
                         )}
@@ -307,6 +349,33 @@ export default function BackendPage() {
                   ))}
                 </tbody>
               </table>
+              <div className="mt-4 flex flex-col justify-between gap-3 text-sm text-zinc-600 sm:flex-row sm:items-center">
+                <span>
+                  Orders {(currentPrintJobsPage - 1) * pageSize + 1}-
+                  {Math.min(currentPrintJobsPage * pageSize, data.printJobs.length)} of {data.printJobs.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPrintJobsPage === 1}
+                    onClick={() => setPrintJobsPage((value) => value - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="rounded-md bg-zinc-100 px-3 py-2">
+                    Page {currentPrintJobsPage} / {printJobsPageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPrintJobsPage === printJobsPageCount}
+                    onClick={() => setPrintJobsPage((value) => value + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

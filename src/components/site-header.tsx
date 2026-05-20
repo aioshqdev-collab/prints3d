@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, UserRound } from "lucide-react";
+import { Menu, ShoppingCart, UserRound, X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/providers/cart-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,22 +18,37 @@ const nav = [
 
 export function SiteHeader() {
   const { count } = useCart();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex min-w-0 items-center gap-2 font-semibold text-zinc-950">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
-            <Image
-              src={logo}
-              alt="Prints3D logo"
-              className="h-10 w-10 object-contain"
-              width={32}
-              height={32}
-            />
-          </span>
-          <span className="truncate">Prints3D</span>
-        </Link>
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            className="md:hidden"
+            variant="ghost"
+            size="icon"
+            type="button"
+            title={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
+            onClick={() => setMenuOpen((value) => !value)}
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          <Link href="/" className="flex min-w-0 items-center gap-2 font-semibold text-zinc-950">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
+              <Image
+                src={logo}
+                alt="Prints3D logo"
+                className="h-10 w-10 object-contain"
+                width={32}
+                height={32}
+              />
+            </span>
+            <span className="truncate">Prints3D</span>
+          </Link>
+        </div>
         <nav className="hidden items-center gap-6 text-sm font-medium text-zinc-600 md:flex">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} className="hover:text-zinc-950">
@@ -55,6 +71,25 @@ export function SiteHeader() {
           </Button>
         </div>
       </div>
+      {menuOpen ? (
+        <nav
+          id="mobile-navigation"
+          className="border-t border-zinc-200 bg-white px-4 py-3 shadow-sm md:hidden"
+        >
+          <div className="mx-auto grid max-w-7xl gap-1 text-sm font-medium text-zinc-700">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-md px-3 py-3 hover:bg-zinc-100 hover:text-zinc-950"
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+      ) : null}
     </header>
   );
 }
