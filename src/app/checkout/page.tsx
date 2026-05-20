@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { CreditCard, Loader2, LogIn, MapPin } from "lucide-react";
+import { CreditCard, Eye, Loader2, LogIn, MapPin } from "lucide-react";
 import { useCart } from "@/components/providers/cart-provider";
 import { PrintingLoaderOverlay } from "@/components/printing-loader";
 import { createClient } from "@/lib/supabase-browser";
@@ -15,9 +15,29 @@ import { Label } from "@/components/ui/label";
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: "payment.failed", callback: (response: RazorpayFailureResponse) => void) => void;
+    };
   }
 }
+
+type RazorpaySuccessResponse = {
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+};
+
+type RazorpayFailureResponse = {
+  error?: {
+    description?: string;
+    reason?: string;
+    metadata?: {
+      order_id?: string;
+      payment_id?: string;
+    };
+  };
+};
 
 type ShippingQuote =
   | {
@@ -33,6 +53,53 @@ type ShippingQuote =
       reason: string;
     };
 
+const checkoutDraftKey = "prints3d-checkout-draft";
+const checkoutQuoteKey = "prints3d-checkout-quote";
+
+type CheckoutForm = {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  pincode: string;
+};
+
+const emptyCheckoutForm: CheckoutForm = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  pincode: "",
+};
+
+function getSavedCheckoutForm() {
+  if (typeof window === "undefined") return emptyCheckoutForm;
+
+  const savedDraft = window.sessionStorage.getItem(checkoutDraftKey);
+  if (!savedDraft) return emptyCheckoutForm;
+
+  try {
+    return { ...emptyCheckoutForm, ...JSON.parse(savedDraft) } as CheckoutForm;
+  } catch {
+    window.sessionStorage.removeItem(checkoutDraftKey);
+    return emptyCheckoutForm;
+  }
+}
+
+function getSavedShippingQuote() {
+  if (typeof window === "undefined") return null;
+
+  const savedQuote = window.sessionStorage.getItem(checkoutQuoteKey);
+  if (!savedQuote) return null;
+
+  try {
+    return JSON.parse(savedQuote) as ShippingQuote;
+  } catch {
+    window.sessionStorage.removeItem(checkoutQuoteKey);
+    return null;
+  }
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -43,14 +110,8 @@ export default function CheckoutPage() {
   const [savingOrder, setSavingOrder] = useState(false);
   const [checkingPincode, setCheckingPincode] = useState(false);
   const [message, setMessage] = useState("");
-  const [quote, setQuote] = useState<ShippingQuote | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-    pincode: "",
-  });
+  const [quote, setQuote] = useState<ShippingQuote | null>(getSavedShippingQuote);
+  const [form, setForm] = useState<CheckoutForm>(getSavedCheckoutForm);
 
   useEffect(() => {
     let mounted = true;
@@ -80,6 +141,18 @@ export default function CheckoutPage() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    window.sessionStorage.setItem(checkoutDraftKey, JSON.stringify(form));
+  }, [form]);
+
+  useEffect(() => {
+    if (quote) {
+      window.sessionStorage.setItem(checkoutQuoteKey, JSON.stringify(quote));
+    } else {
+      window.sessionStorage.removeItem(checkoutQuoteKey);
+    }
+  }, [quote]);
+
   const shipping = quote?.allowed ? quote.charge : 0;
   const total = subtotal + shipping;
   const canPay = useMemo(
@@ -89,9 +162,9 @@ export default function CheckoutPage() {
       quote?.allowed &&
       form.name.trim().length > 1 &&
       form.phone.trim().length > 5 &&
-      form.email.includes("@") &&
+      Boolean(user?.email?.includes("@")) &&
       form.address.trim().length > 7,
-    [form, items.length, quote, user],
+    [form.address, form.name, form.phone, items.length, quote, user],
   );
 
   function updateForm(field: keyof typeof form, value: string) {
@@ -119,11 +192,18 @@ export default function CheckoutPage() {
     }
   }
 
-  async function saveOrder(payment?: {
-    razorpay_order_id?: string;
-    razorpay_payment_id?: string;
-    razorpay_signature?: string;
-  }) {
+  async function verifyPayment(payment: RazorpaySuccessResponse) {
+    const response = await fetch("/api/verify-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payment),
+    });
+    const result = await response.json();
+
+    if (!response.ok) throw new Error(result.error ?? "Payment verification failed.");
+  }
+
+  async function saveOrder(payment: RazorpaySuccessResponse) {
     setSavingOrder(true);
     const {
       data: { session },
@@ -138,7 +218,7 @@ export default function CheckoutPage() {
         Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        customer: form,
+        customer: { ...form, email: session.user.email ?? form.email },
         items,
         payment: {
           razorpayOrderId: payment?.razorpay_order_id,
@@ -172,11 +252,18 @@ export default function CheckoutPage() {
       const response = await fetch("/api/razorpay/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total }),
+        body: JSON.stringify({ amountPaise: Math.round(total * 100) }),
       });
-      const order = await response.json();
+      const rawOrder = await response.text();
+      let order: { error?: string; amount?: number; currency?: string; id?: string; order_id?: string } = {};
+      try {
+        order = rawOrder ? JSON.parse(rawOrder) : {};
+      } catch {
+        order = { error: rawOrder || "Payment server returned an invalid response." };
+      }
 
       if (!response.ok) throw new Error(order.error ?? "Unable to create payment order");
+      if (!order.order_id && !order.id) throw new Error("Razorpay order id was not returned.");
 
       const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
       if (!window.Razorpay || !razorpayKey) {
@@ -190,15 +277,14 @@ export default function CheckoutPage() {
         currency: order.currency,
         name: "Prints3D",
         description: "3D printed parts order",
-        order_id: order.id,
-        handler: async (payment: {
-          razorpay_order_id?: string;
-          razorpay_payment_id?: string;
-          razorpay_signature?: string;
-        }) => {
+        order_id: order.order_id ?? order.id,
+        handler: async (payment: RazorpaySuccessResponse) => {
           try {
+            await verifyPayment(payment);
             const saved = await saveOrder(payment);
             clearCart();
+            window.sessionStorage.removeItem(checkoutDraftKey);
+            window.sessionStorage.removeItem(checkoutQuoteKey);
             const params = new URLSearchParams({
               orderId: saved.orderId,
               email: saved.emailSent ? "sent" : "pending",
@@ -213,10 +299,19 @@ export default function CheckoutPage() {
         },
         prefill: {
           name: form.name,
-          email: form.email,
+          email: user.email ?? form.email,
           contact: form.phone,
         },
+        readonly: {
+          email: true,
+        },
+        modal: {
+          ondismiss: () => setMessage("Payment was cancelled before completion."),
+        },
         theme: { color: "#10b981" },
+      });
+      checkout.on("payment.failed", (failure) => {
+        setMessage(failure.error?.description ?? failure.error?.reason ?? "Payment failed. Please try again.");
       });
       checkout.open();
     } catch (error) {
@@ -269,15 +364,17 @@ export default function CheckoutPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email from login</Label>
             <Input
               id="email"
               required
+              readOnly
               type="email"
               placeholder="you@example.com"
-              value={form.email}
-              onChange={(event) => updateForm("email", event.target.value)}
+              value={user?.email ?? form.email}
+              className="bg-zinc-100 text-zinc-700"
             />
+            <p className="text-xs text-zinc-500">Orders are linked to the email used for login.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
             <div className="space-y-2">
@@ -338,6 +435,12 @@ export default function CheckoutPage() {
           <Button className="mt-5 w-full" variant="dark" onClick={payNow} disabled={loading || !canPay}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
             {loading ? "Loading..." : "Pay with Razorpay"}
+          </Button>
+          <Button asChild className="mt-3 w-full" variant="outline">
+            <Link href="/preview">
+              <Eye className="h-4 w-4" />
+              Optional preview before purchase
+            </Link>
           </Button>
           {message ? <p className="mt-4 text-sm text-red-600">{message}</p> : null}
         </aside>

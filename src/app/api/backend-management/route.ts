@@ -3,7 +3,7 @@ import { z } from "zod";
 import { validateAdminToken } from "@/lib/admin-auth";
 import { getBackendManagementData } from "@/lib/backend-data";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-import { sendPrintStartedEmail } from "@/lib/email";
+import { sendPrintFinishedEmail, sendPrintStartedEmail } from "@/lib/email";
 
 const tokenSchema = z.object({ token: z.string().min(1) });
 
@@ -72,6 +72,12 @@ export async function PATCH(request: Request) {
   }
 
   if (parsed.data.action === "queue-status") {
+    const { data: queueItem } = await supabase
+      .from("print_queue")
+      .select("order_id, customer_email, item_name")
+      .eq("id", parsed.data.queueId)
+      .maybeSingle();
+
     const patch =
       parsed.data.status === "printing"
         ? { status: "printing", started_at: new Date().toISOString() }
@@ -83,12 +89,6 @@ export async function PATCH(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     if (parsed.data.status === "printing") {
-      const { data: queueItem } = await supabase
-        .from("print_queue")
-        .select("order_id, customer_email, item_name")
-        .eq("id", parsed.data.queueId)
-        .maybeSingle();
-
       await supabase
         .from("printer_state")
         .upsert({ id: 1, is_free: false, current_queue_id: parsed.data.queueId, updated_at: new Date().toISOString() });
@@ -106,6 +106,14 @@ export async function PATCH(request: Request) {
       await supabase
         .from("printer_state")
         .upsert({ id: 1, is_free: true, current_queue_id: null, updated_at: new Date().toISOString() });
+
+      if (queueItem) {
+        await sendPrintFinishedEmail({
+          to: queueItem.customer_email,
+          itemName: queueItem.item_name,
+          orderId: queueItem.order_id,
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });

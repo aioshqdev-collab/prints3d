@@ -87,7 +87,7 @@ export async function enqueuePrintableItems(supabase: SupabaseClient, input: Que
     queuedCount,
     message:
       startedCount > 0
-        ? "Your print has started. Queued items will start FIFO after the current print finishes."
+        ? "Printing will start soon."
         : "Your product is in the print queue. We will notify you when printing starts.",
   };
 }

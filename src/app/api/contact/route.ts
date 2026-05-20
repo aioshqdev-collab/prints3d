@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = (process.env.ORDER_FROM_EMAIL ?? "Prints3D <onboarding@resend.dev>").trim();
-  const to = process.env.CONTACT_TO_EMAIL?.trim() || process.env.ORDER_FROM_EMAIL?.trim();
+  const to = process.env.CONTACT_TO_EMAIL?.trim() || "aios.hq.dev@gmail.com";
 
   if (!apiKey || !to) {
     return NextResponse.json(

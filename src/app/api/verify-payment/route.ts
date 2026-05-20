@@ -1,0 +1,5 @@
+import { handleVerifyRazorpayPayment } from "@/lib/razorpay-api";
+
+export async function POST(request: Request) {
+  return handleVerifyRazorpayPayment(request);
+}

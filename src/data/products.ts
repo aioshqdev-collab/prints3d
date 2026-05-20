@@ -16,7 +16,7 @@ export const products: Product[] = [
     id: "desk-organizer-grid",
     name: "Modular Desk Organizer",
     category: "Workspace",
-    price: 649,
+    price: 9,
     material: "PLA+",
     color: "Graphite",
     leadTime: "Ready to ship",

@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import { products, type Product } from "@/data/products";
+import { productImages } from "@/data/product-images";
 import { productToCartItem } from "@/lib/cart";
 import { useCart } from "@/components/providers/cart-provider";
 import { Button } from "@/components/ui/button";
@@ -18,14 +20,19 @@ const swatches: Record<string, string> = {
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const productImage = productImages[product.id];
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex aspect-[4/3] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#d9f99d,transparent_22%),linear-gradient(135deg,#f4f4f5,#d4d4d8)]">
-        <div className="relative h-28 w-28 rounded-lg bg-zinc-950 shadow-2xl">
-          <div className="absolute left-5 top-5 h-20 w-20 rounded-md bg-emerald-400 shadow-inner" />
-          <div className="absolute right-3 top-3 h-7 w-7 rounded-full bg-white/90" />
-        </div>
+      <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-zinc-100">
+        {productImage ? (
+          <Image src={productImage} alt={product.name} fill sizes="(min-width: 1024px) 33vw, 50vw" className="object-cover" />
+        ) : (
+          <div className="relative h-28 w-28 rounded-lg bg-zinc-950 shadow-2xl">
+            <div className="absolute left-5 top-5 h-20 w-20 rounded-md bg-emerald-400 shadow-inner" />
+            <div className="absolute right-3 top-3 h-7 w-7 rounded-full bg-white/90" />
+          </div>
+        )}
       </div>
       <CardContent className="pt-5">
         <div className="flex items-start justify-between gap-4">

@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { Cuboid, ShoppingCart, UserRound } from "lucide-react";
+import { ShoppingCart, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/providers/cart-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logo from "@/logo.png";
 
 const nav = [
   { href: "/custom-print", label: "Custom print" },
@@ -20,8 +22,14 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-2 font-semibold text-zinc-950">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
-            <Cuboid className="h-5 w-5" />
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-zinc-950 text-white">
+            <Image
+              src={logo}
+              alt="Prints3D logo"
+              className="h-10 w-10 object-contain"
+              width={32}
+              height={32}
+            />
           </span>
           <span className="truncate">Prints3D</span>
         </Link>
@@ -50,3 +58,4 @@ export function SiteHeader() {
     </header>
   );
 }
+

@@ -4,6 +4,7 @@ import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getShippingQuote } from "@/lib/shipping";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { decrementPreprintedStock, enqueuePrintableItems } from "@/lib/print-queue";
+import { verifyRazorpayPaymentSignature } from "@/lib/razorpay";
 
 const cartItemSchema = z.object({
   id: z.string(),
@@ -76,6 +77,20 @@ export async function POST(request: Request) {
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal + shippingQuote.charge;
+
+  if (!payment?.razorpayOrderId || !payment.razorpayPaymentId || !payment.razorpaySignature) {
+    return NextResponse.json({ error: "Missing Razorpay payment verification fields." }, { status: 400 });
+  }
+
+  const paymentVerified = verifyRazorpayPaymentSignature({
+    razorpayOrderId: payment.razorpayOrderId,
+    razorpayPaymentId: payment.razorpayPaymentId,
+    razorpaySignature: payment.razorpaySignature,
+  });
+
+  if (!paymentVerified) {
+    return NextResponse.json({ error: "Payment signature verification failed. Order was not saved." }, { status: 400 });
+  }
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
